@@ -1,0 +1,140 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "a complete network with a vpc 2 subnets and an instance",
+    "Metadata": {
+
+    },
+    "Parameters": {
+      "careVpcCidr": {
+          "Description": "cidr for you Vpc",
+          "Type": "String",
+          "Default": "10.0.0.0/16"
+      },
+      "carePrisubCidr": {
+          "Description": "-",
+          "Type": "String",
+          "Default": "10.0.1.0/24"
+      },
+      "carePubsubCidr": {
+          "Description": "cidr for public subnet",
+          "Type": "String",
+          "Default": "10.0.2.0/24"
+      },
+      "carePrisubAz": {
+          "Description": "Availabilityzone for prisubnet",
+          "Type": "AWS::EC2::AvailabilityZone::Name"
+      },
+      "carePubsubAz": {
+          "Description": "Availabilityzone for pubsubnet",
+          "Type": "AWS::EC2::AvailabilityZone::Name"
+      }
+    },
+    "Mappings": {
+
+    },
+    "Conditions": {
+
+    },
+    "Resources": {
+      "careVpc": {
+        "Type": "AWS::EC2::VPC",
+        "Properties": {
+          "CidrBlock": { "Ref": "careVpcCidr" },
+          "Tags": [{ "Key": "Name", "Value":  "careVpc" }]
+        }
+      },
+      "carePrisub": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "AvailabilityZone": { "Ref": "carePrisubAz" },
+          "VpcId": { "Ref": "careVpc" },
+          "CidrBlock": { "Ref": "carePrisubCidr" },
+          "Tags": [{ "Key": "Name", "Value":  "care-Private-subnet" }]
+        }
+      },
+      "carePubsub": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "AvailabilityZone": { "Ref": "carePubsubAz" },
+          "VpcId": { "Ref": "careVpc" },
+          "CidrBlock": { "Ref": "carePubsubCidr" },
+          "Tags": [{ "Key": "Name", "Value":  "care-Public-subnet" }]
+        }
+      },
+      "careig": {
+        "Type": "AWS::EC2::InternetGateway",
+        "Properties": {
+          "Tags": [{ "Key": "Name", "Value":  "care-ig" }]
+        }
+      },
+      "AttachGateway": {
+        "Type": "AWS::EC2::VPCGatewayAttachment",
+        "Properties": {
+          "VpcId": { "Ref": "careVpc" },
+          "InternetGatewayId": { "Ref": "careig" }
+        }
+      },
+      "carePriRT": {
+        "Type": "AWS::EC2::RouteTable",
+        "Properties": {
+          "VpcId": { "Ref": "careVpc" },
+          "Tags": [{ "Key": "Name", "Value":  "care-Pri-RT" }]
+        }
+      },
+      "PrivateRouteTableAssociation": {
+        "Type": "AWS::EC2::SubnetRouteTableAssociation",
+        "Properties": {
+          "SubnetId": { "Ref": "carePrisub" },
+          "RouteTableId": { "Ref": "carePriRT" }
+        }
+      },
+      "carePubRT": {
+        "Type": "AWS::EC2::RouteTable",
+        "Properties": {
+          "VpcId": { "Ref": "careVpc" },
+          "Tags": [{ "Key": "Name", "Value":  "care-Pub-RT" }]
+        }
+      },
+      "carePubRTA": {
+        "Type": "AWS::EC2::SubnetRouteTableAssociation",
+        "Properties": {
+          "SubnetId": { "Ref": "carePubsub" },
+          "RouteTableId": { "Ref": "carePubRT" }
+        }
+      },
+      "carePubR": {
+        "Type": "AWS::EC2::Route",
+        "Properties": {
+          "RouteTableId": { "Ref": "carePubRT" },
+          "DestinationCidrBlock": "0.0.0.0/0",
+          "GatewayId": { "Ref": "careig" }
+        }
+      },
+      "natEip": {
+        "Type": "AWS::EC2::EIP",
+        "Properties": {
+          "Domain": "vpc"
+        }
+      },
+      "carePriRoute": {
+        "Type": "AWS::EC2::Route",
+        "Properties": {
+          "RouteTableId": { "Ref": "carePriRT" },
+          "DestinationCidrBlock": "0.0.0.0/0",
+          "NatGatewayId": { "Ref": "careNatGateway" }
+
+        }
+      },
+      "careNatGateway" : {
+          "Type" : "AWS::EC2::NatGateway",
+          "Properties" : {
+             "AllocationId" : { "Fn::GetAtt" : ["natEip", "AllocationId"]},
+             "SubnetId" : { "Ref" : "carePubsub"},
+             "Tags" : [ {"Key" : "Name", "Value" : "care-NatGateway" } ]
+            }
+        }
+    },
+    "Outputs": {
+
+    }
+}
